@@ -67,13 +67,6 @@ if len(DUMP_CHAT_ID) == 0:
 else:
     DUMP_CHAT_ID = int(DUMP_CHAT_ID)
 
-FSUB_ID = os.environ.get('FSUB_ID', '')
-if len(FSUB_ID) == 0:
-    logging.error("FSUB_ID variable is missing! Exiting now")
-    exit(1)
-else:
-    FSUB_ID = int(FSUB_ID)
-
 USER_SESSION_STRING = os.environ.get('USER_SESSION_STRING', '')
 if len(USER_SESSION_STRING) == 0:
     logging.info("USER_SESSION_STRING variable is missing! Bot will split Files in 2Gb...")
@@ -95,17 +88,6 @@ VALID_DOMAINS = [
 ]
 last_update_time = 0
 
-async def is_user_member(client, user_id):
-    try:
-        member = await client.get_chat_member(FSUB_ID, user_id)
-        if member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"Error checking membership status for user {user_id}: {e}")
-        return False
-    
 def is_valid_url(url):
     parsed_url = urlparse(url)
     return any(parsed_url.netloc.endswith(domain) for domain in VALID_DOMAINS)
@@ -122,43 +104,15 @@ def format_size(size):
 
 @app.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
-    join_button = InlineKeyboardButton("ᴊᴏɪɴ ❤️🚀", url="https://t.me/jetmirror")
-    developer_button = InlineKeyboardButton("ᴅᴇᴠᴇʟᴏᴘᴇʀ ⚡️", url="https://t.me/rtx5069")
-    repo69 = InlineKeyboardButton("ʀᴇᴘᴏ 🌐", url="https://github.com/Hrishi2861/Terabox-Downloader-Bot")
     user_mention = message.from_user.mention
-    reply_markup = InlineKeyboardMarkup([[join_button, developer_button], [repo69]])
-    final_msg = f"ᴡᴇʟᴄᴏᴍᴇ, {user_mention}.\n\n🌟 ɪ ᴀᴍ ᴀ ᴛᴇʀᴀʙᴏx ᴅᴏᴡɴʟᴏᴀᴅᴇʀ ʙᴏᴛ. sᴇɴᴅ ᴍᴇ ᴀɴʏ ᴛᴇʀᴀʙᴏx ʟɪɴᴋ ɪ ᴡɪʟʟ ᴅᴏᴡɴʟᴏᴀᴅ ᴡɪᴛʜɪɴ ғᴇᴡ sᴇᴄᴏɴᴅs ᴀɴᴅ sᴇɴᴅ ɪᴛ ᴛᴏ ʏᴏᴜ ✨."
-    video_file_id = "/app/Jet-Mirror.mp4"
-    if os.path.exists(video_file_id):
-        await client.send_video(
-            chat_id=message.chat.id,
-            video=video_file_id,
-            caption=final_msg,
-            reply_markup=reply_markup
-            )
-    else:
-        await message.reply_text(final_msg, reply_markup=reply_markup)
-
-async def update_status_message(status_message, text):
-    try:
-        await status_message.edit_text(text)
-    except Exception as e:
-        logger.error(f"Failed to update status message: {e}")
+    final_msg = f"Hello {user_mention}.\n\nI am a Terabox downloader bot. Send me any Terabox link and I will download it for you."
+    await message.reply_text(final_msg)
 
 @app.on_message(filters.text)
 async def handle_message(client: Client, message: Message):
     if message.text.startswith('/'):
         return
     if not message.from_user:
-        return
-
-    user_id = message.from_user.id
-    is_member = await is_user_member(client, user_id)
-
-    if not is_member:
-        join_button = InlineKeyboardButton("ᴊᴏɪɴ ❤️🚀", url="https://t.me/jetmirror")
-        reply_markup = InlineKeyboardMarkup([[join_button]])
-        await message.reply_text("ʏᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴍʏ ᴄʜᴀɴɴᴇʟ ᴛᴏ ᴜsᴇ ᴍᴇ.", reply_markup=reply_markup)
         return
     
     url = None
@@ -175,7 +129,7 @@ async def handle_message(client: Client, message: Message):
     final_url = f"https://teradlrobot.cheemsbackup.workers.dev/?url={encoded_url}"
 
     download = aria2.add_uris([final_url])
-    status_message = await message.reply_text("sᴇɴᴅɪɴɢ ʏᴏᴜ ᴛʜᴇ ᴍᴇᴅɪᴀ...🤤")
+    status_message = await message.reply_text("Processing your request...")
 
     start_time = datetime.now()
 
@@ -188,14 +142,14 @@ async def handle_message(client: Client, message: Message):
         elapsed_minutes, elapsed_seconds = divmod(elapsed_time.seconds, 60)
 
         status_text = (
-            f"┏ ғɪʟᴇɴᴀᴍᴇ: {download.name}\n"
+            f"┏ Filename: {download.name}\n"
             f"┠ [{'★' * int(progress / 10)}{'☆' * (10 - int(progress / 10))}] {progress:.2f}%\n"
-            f"┠ ᴘʀᴏᴄᴇssᴇᴅ: {format_size(download.completed_length)} ᴏғ {format_size(download.total_length)}\n"
-            f"┠ sᴛᴀᴛᴜs: 📥 Downloading\n"
-            f"┠ ᴇɴɢɪɴᴇ: <b><u>Aria2c v1.37.0</u></b>\n"
-            f"┠ sᴘᴇᴇᴅ: {format_size(download.download_speed)}/s\n"
-            f"┠ ᴇᴛᴀ: {download.eta} | ᴇʟᴀᴘsᴇᴅ: {elapsed_minutes}m {elapsed_seconds}s\n"
-            f"┖ ᴜsᴇʀ: <a href='tg://user?id={user_id}'>{message.from_user.first_name}</a> | ɪᴅ: {user_id}\n"
+            f"┠ Processed: {format_size(download.completed_length)} of {format_size(download.total_length)}\n"
+            f"┠ Status: 📥 Downloading\n"
+            f"┠ Engine: <b><u>Aria2c v1.37.0</u></b>\n"
+            f"┠ Speed: {format_size(download.download_speed)}/s\n"
+            f"┠ ETA: {download.eta} | Elapsed: {elapsed_minutes}m {elapsed_seconds}s\n"
+            f"┖ User: <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>\n"
             )
         while True:
             try:
@@ -208,9 +162,7 @@ async def handle_message(client: Client, message: Message):
     file_path = download.files[0].path
     caption = (
         f"✨ {download.name}\n"
-        f"👤 ʟᴇᴇᴄʜᴇᴅ ʙʏ : <a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>\n"
-        f"📥 ᴜsᴇʀ ʟɪɴᴋ: tg://user?id={user_id}\n\n"
-        "[ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴊᴇᴛ-ᴍɪʀʀᴏʀ ❤️🚀](https://t.me/JetMirror)"
+        f"👤 Requested by: <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>\n"
     )
 
     last_update_time = time.time()
@@ -236,14 +188,14 @@ async def handle_message(client: Client, message: Message):
         elapsed_minutes, elapsed_seconds = divmod(elapsed_time.seconds, 60)
 
         status_text = (
-            f"┏ ғɪʟᴇɴᴀᴍᴇ: {download.name}\n"
+            f"┏ Filename: {download.name}\n"
             f"┠ [{'★' * int(progress / 10)}{'☆' * (10 - int(progress / 10))}] {progress:.2f}%\n"
-            f"┠ ᴘʀᴏᴄᴇssᴇᴅ: {format_size(current)} ᴏғ {format_size(total)}\n"
-            f"┠ sᴛᴀᴛᴜs: 📤 Uploading to Telegram\n"
-            f"┠ ᴇɴɢɪɴᴇ: <b><u>PyroFork v2.2.11</u></b>\n"
-            f"┠ sᴘᴇᴇᴅ: {format_size(current / elapsed_time.seconds if elapsed_time.seconds > 0 else 0)}/s\n"
-            f"┠ ᴇʟᴀᴘsᴇᴅ: {elapsed_minutes}m {elapsed_seconds}s\n"
-            f"┖ ᴜsᴇʀ: <a href='tg://user?id={user_id}'>{message.from_user.first_name}</a> | ɪᴅ: {user_id}\n"
+            f"┠ Processed: {format_size(current)} of {format_size(total)}\n"
+            f"┠ Status: 📤 Uploading to Telegram\n"
+            f"┠ Engine: <b><u>PyroFork v2.2.11</u></b>\n"
+            f"┠ Speed: {format_size(current / elapsed_time.seconds if elapsed_time.seconds > 0 else 0)}/s\n"
+            f"┠ Elapsed: {elapsed_minutes}m {elapsed_seconds}s\n"
+            f"┖ User: <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>\n"
         )
         await update_status(status_message, status_text)
 
@@ -285,7 +237,7 @@ async def handle_message(client: Client, message: Message):
                 
                 output_path = f"{output_prefix}.{i+1:03d}{original_ext}"
                 cmd = [
-                    'xtra', '-y', '-ss', str(i * duration_per_part),
+                    'ffmpeg', '-y', '-ss', str(i * duration_per_part),
                     '-i', input_path, '-t', str(duration_per_part),
                     '-c', 'copy', '-map', '0',
                     '-avoid_negative_ts', 'make_zero',
